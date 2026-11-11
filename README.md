@@ -9,7 +9,7 @@ The template runs the **official image** `mautic/mautic:7.2.2-apache@sha256:8346
 Upstream runs three containers from the same image (`DOCKER_MAUTIC_ROLE` = `mautic_web`, `mautic_cron`, `mautic_worker`) that share the config and media folders. Railway volumes can't be shared between services, so [`start.sh`](start.sh) runs all three roles in one container:
 
 1. Puts `config/`, `var/logs/`, `docroot/media/files/` and `docroot/media/images/` on one volume at `/data` (symlinks).
-2. Makes Apache listen on Railway's `PORT`.
+2. Trusts Railway's proxy (`config/parameters_local.php`, written once) so links use https and the public host, and makes Apache (prefork MPM) listen on Railway's `PORT`.
 3. On first boot, runs `mautic:install` with the Railway domain as the site URL and the admin login from `MAUTIC_ADMIN_EMAIL` and `MAUTIC_ADMIN_PASSWORD`. The web installer is never left open.
 4. Runs database migrations on every start, then upstream's cron schedule (segments, campaigns, triggers) and upstream's supervisord queue workers (email, hit, failed), with the Doctrine queue in MySQL.
 5. Starts Apache in the foreground.

@@ -14,6 +14,13 @@ for p in config:config logs:var/logs media/files:docroot/media/files media/image
   if mountpoint -q "$dst"; then log "$dst is already a mounted volume; leaving it in place."; continue; fi
   if [ ! -L "$dst" ]; then cp -an "$dst"/. "$src"/ 2>/dev/null || true; rm -rf "$dst"; ln -s "$src" "$dst"; fi
 done
+# Trust Railway's proxy so Mautic sees https, the public host and the visitor's IP. Mautic reads
+# trusted_proxies only from its config files, so write parameters_local.php once (edit it on the volume to change).
+[ -f $D/config/parameters_local.php ] || cat > $D/config/parameters_local.php <<'PHP'
+<?php
+// Written by the Railway start script. Railway's edge proxy is the only way in, so trust X-Forwarded-* from it.
+$parameters = ['trusted_proxies' => ['0.0.0.0/0', '::/0']];
+PHP
 chown -R www-data:www-data $D
 
 # 2. Apache: only the prefork MPM (mod_php needs it; Railway's image unpacking can leave mpm_event enabled
@@ -29,7 +36,6 @@ export DOCKER_MAUTIC_ROLE=mautic_web
 export MAUTIC_DB_PORT="${MAUTIC_DB_PORT:-3306}"
 export MAUTIC_MESSENGER_DSN_EMAIL="${MAUTIC_MESSENGER_DSN_EMAIL:-doctrine://default}"
 export MAUTIC_MESSENGER_DSN_HIT="${MAUTIC_MESSENGER_DSN_HIT:-doctrine://default}"
-export MAUTIC_TRUSTED_PROXIES="${MAUTIC_TRUSTED_PROXIES:-[\"0.0.0.0/0\",\"::/0\"]}"
 [ -n "$MAILER_DSN" ] && export MAUTIC_MAILER_DSN="$MAILER_DSN"
 [ -n "$MAILER_FROM_EMAIL" ] && export MAUTIC_MAILER_FROM_EMAIL="$MAILER_FROM_EMAIL"
 [ -n "$MAILER_FROM_NAME" ] && export MAUTIC_MAILER_FROM_NAME="$MAILER_FROM_NAME"
